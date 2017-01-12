@@ -1,0 +1,206 @@
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+from tqdm import *
+
+import data_utils
+import random_walk
+from linear_td_lamda import Linear_TD
+
+######################################################################
+### (1) Generate random walk training sequences (100 training sets with 10 sequences each)
+walks = random_walk.generate_walks(1000)
+training_folds = random_walk.split_training_sets(walks, 10)
+
+### (2) The ideal predictions for the 7 state random-walk are the weights we want to learn,
+# that are true probabilities of the walk terminating at state G.
+# Note that these values are external to the learning problem (as they requre full knowledge of the MDP),
+# and are only used to assess the model.
+ideal_predictions = np.array(np.linspace(1./6., 5./6., 5), dtype=np.float64)
+rmse = lambda x, y: np.sqrt(np.mean((x-y)**2), dtype = np.float64)
+
+
+# ## (3) Extracted into numeric csv files from the plots in the paper using webplotdigitizer
+# ## (http://arohatgi.info/WebPlotDigitizer/)
+fig3 = data_utils.load_fig('fig3.csv')
+fig4_lambdas, fig4 = data_utils.load_fig4('fig4')
+fig5 = data_utils.load_fig('fig5.csv')
+
+
+# ## (4) Experiment 1 (Sutton88 figure 3)
+# # ex1_lambda = [0.,.1,.3,.5,.7,.9,1.]
+# ex1_lambda= np.array([0.,.1,.3,.5,.7,.9,1.], dtype=np.float64)
+# ex1_rmse = []
+# ex1_sigma = []
+# alpha = .025
+# epsilon = .00001
+# # epsilon = .01
+#
+# print "alpha = ", alpha
+# print "eps = ", epsilon
+#
+# for L in ex1_lambda:
+#     L_rmse = []
+#     for f in tqdm(range(len(training_folds))):
+#         td = Linear_TD(lam = L, learning_rate=alpha, epsilon=epsilon)
+#         td.fit(training_folds[f])
+#         L_rmse.append(rmse(ideal_predictions, td.w[1:6]))
+#     ex1_rmse.append(np.mean(L_rmse))
+#     ex1_sigma.append(np.std(L_rmse))
+#
+# ex1_sigma /= np.sqrt(len(training_folds))
+#
+# print "alpha = ", alpha
+# print "eps = ", epsilon
+#
+# print "Lambda: ", ex1_lambda
+# print "rmse = ", ex1_rmse
+# print "std: ", ex1_sigma
+#
+# plt.plot(ex1_lambda, ex1_rmse, 'go-')
+# # plt.errorbar(ex1_lambda, ex1_rmse, yerr=ex1_sigma, fmt='--o', ecolor='g')
+# plt.title('a='+str(alpha) + ', eps=' + str(epsilon) +
+#           'Average Error of Random Walk Problem Under Repeated Presentations', fontsize='10')
+# plt.ylabel('RMS Error', fontsize='13')
+# plt.xlabel('$\lambda$', fontsize='13')
+# # fig = plt.gcf()
+# # fig.subplots_adjust(bottom=0.2)
+# plt.show()
+#
+
+###############################################
+### (5) Experiment 2
+ex2a_alpha = np.linspace(0., .6, 13)
+# ex2a_alpha = np.linspace(0.1,1.5, 13)
+ex2a_lambda = np.array(fig4_lambdas).astype(np.float32)
+ex2a_lambda = [0.]
+ex2a_rmse = []
+
+# training_folds = [[
+#     np.array(
+# [[ 0. , 0.,  0., 1., 0., 0., 0.],
+#  [ 0. , 0.,  0., 0., 1., 0., 0.],
+#  [ 0. , 0.,  0., 1., 0., 0., 0.],
+#  [ 0. , 0.,  0., 0., 1., 0., 0.],
+#  [ 0. , 0.,  0., 1., 0., 0., 0.],
+#  [ 0. , 0.,  0., 0., 1., 0., 0.],
+#  [ 0. , 0.,  0., 1., 0., 0., 0.],
+#  [ 0. , 0.,  0., 0., 1., 0., 0.],
+#  [ 0. , 0.,  0., 1., 0., 0., 0.],
+#  [ 0. , 0.,  0., 0., 1., 0., 0.],
+#  [ 0. , 0.,  0., 1., 0., 0., 0.],
+#  [ 0. , 0.,  0., 0., 1., 0., 0.],
+#  [ 0. , 0.,  0., 0., 0., 1., 0.],
+#  [ 0. , 0.,  0., 0., 1., 0., 0.],
+#  [ 0. , 0.,  0., 1., 0., 0., 0.],
+#  [ 0. , 0.,  0., 0., 1., 0., 0.],
+#  [ 0. , 0.,  0., 1., 0., 0., 0.],
+#  [ 0. , 0.,  1., 0., 0., 0., 0.],
+#  [ 0. , 1.,  0., 0., 0., 0., 0.],
+#  [ 0. , 0.,  1., 0., 0., 0., 0.],
+#  [ 0. , 0.,  0., 1., 0., 0., 0.],
+#  [ 0. , 0.,  0., 0., 1., 0., 0.],
+#  [ 0. , 0.,  0., 0., 0., 1., 0.],
+#  [ 0. , 0.,  0., 0., 0., 0., 1.]])
+# ]]
+
+# training_folds = training_folds[0:1][0:1]
+# training_folds[0] = [training_folds[0][0],training_folds[0][1],training_folds[0][2], training_folds[0][3], training_folds[0][4],
+#                      training_folds[0][5], training_folds[0][6], training_folds[0][7], training_folds[0][8], training_folds[0][9]
+#                     ]
+# print training_folds
+
+
+print "len(training_folds): ", len(training_folds)
+print "shape(training_folds): ", len(training_folds[0])
+print "ideal_pred: ", ideal_predictions
+
+for L in ex2a_lambda:
+    alphas = []
+    for a in ex2a_alpha:
+        rmses = []
+        for f in tqdm(range(len(training_folds))):
+        # for f in (range(len(training_folds))):
+            # print "f: ", f
+            td = Linear_TD(lam = L, learning_rate=a, incremental_updates=True)
+            td.fit(training_folds[f])
+            print "a = ", a
+            # print "td.w[1:6]: ", td.w[1:6]
+            # print rmse(ideal_predictions, td.w[1:6])
+            rmses.append(rmse(ideal_predictions, td.w[1:6]))
+
+        alphas.append(np.mean(rmses))
+    ex2a_rmse.append(alphas)
+
+# max_rmse=.7
+# ex2a_points[ex2a_points > max_rmse] = np.nan
+
+ex2a_points = np.asarray(ex2a_rmse).T
+plt.gca().set_color_cycle(['r', 'g', 'b', 'c'])
+plt.plot(ex2a_alpha, ex2a_points, 'o-')
+plt.ylabel('RMS Error', fontsize='13')
+plt.xlabel(r'$\alpha$', fontsize='13')
+plt.title('Average Error on Random Walk Problem Experiencing 10 Sequences', fontsize='10')
+legend = ['$\lambda$=' + str(l) for l in fig4_lambdas]
+plt.legend(legend)
+plt.show()
+
+
+
+quit()
+
+###############################################
+### (6) Experiment 2-2
+#iterate over all<lambda,alpha> and select the best alpha for each lambda ex2b_lambda = np.linspace(0., 1., 11)
+ex2b_lambda = np.linspace(0., 1., 11)
+ex2b_alpha = np.linspace(0., .6, 13)
+optimal_params = []
+
+for i in tqdm(range(len(ex2b_lambda))):
+    L = ex2b_lambda[i]
+    best_alpha = -1.
+    lowest_err = float('inf')
+    for a in ex2b_alpha:
+        rmses = []
+        for f in training_folds:
+            td = Linear_TD(lam = L, learning_rate=a, incremental_updates=True)
+            td.fit(f)
+            rmses.append(rmse(ideal_predictions, td.w[1:6]))
+        avg_err = np.mean(rmses)
+        if avg_err < lowest_err:
+            best_alpha = np.asscalar(a)
+            lowest_err = avg_err
+    optimal_params.append((L, best_alpha))
+optimal_params = np.round(optimal_params, decimals=2).tolist()
+
+
+
+##### Now we can finally run using the optimal parameter tuples!
+# epsilon = .05
+ex2b_rmse = []
+ex2b_sigma = []
+for L, a in optimal_params:
+    rmses = []
+    for f in tqdm(range(len(training_folds))):
+        td = Linear_TD(lam = L, learning_rate=a, incremental_updates=True)
+        td.fit(training_folds[f])
+        rmses.append(rmse(ideal_predictions, td.w[1:6]))
+    ex2b_rmse.append(np.mean(rmses))
+    ex2b_sigma.append(np.std(rmses))
+ex2b_sigma /= np.sqrt(len(training_folds))
+
+
+
+plt.plot(ex2b_lambda, ex2b_rmse, 'go-')
+# plt.errorbar(ex2b_lambda, ex2b_rmse, yerr=ex2b_sigma, fmt='--o', ecolor='g')
+plt.title('Average Error at Best Alpha on Random Walk Problem', fontsize='10')
+plt.ylabel('RMS Error', fontsize='13')
+plt.xlabel('$\lambda$', fontsize='13')
+plt.show()
+
+
+
+
+
+
